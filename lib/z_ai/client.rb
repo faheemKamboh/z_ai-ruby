@@ -7,7 +7,9 @@ require "uri"
 require_relative "errors"
 require_relative "response"
 
+# Namespace for the Z.ai Ruby SDK.
 module ZAI
+  # HTTP client for Z.ai API requests.
   class Client
     DEFAULT_BASE_URL = "https://api.z.ai/api/paas/v4"
     DEFAULT_TIMEOUT = 60
