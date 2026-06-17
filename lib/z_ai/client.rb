@@ -20,7 +20,7 @@ module ZAI
     attr_reader :api_key, :base_url, :timeout, :default_headers
 
     def initialize(api_key: nil, base_url: DEFAULT_BASE_URL, timeout: DEFAULT_TIMEOUT, default_headers: {})
-      @api_key = (api_key || ENV["ZAI_API_KEY"]).to_s
+      @api_key = (api_key || ENV.fetch("ZAI_API_KEY", nil)).to_s
       @base_url = base_url.to_s.chomp("/")
       @timeout = timeout
       @default_headers = default_headers
@@ -39,17 +39,22 @@ module ZAI
     private
 
     def post(path, body:)
-      uri = URI("#{base_url}#{path}")
-      request = Net::HTTP::Post.new(uri, headers)
-      request.body = JSON.generate(body)
+      request = build_request(path, body)
+      response = perform_request(request.uri, request)
 
-      response = perform_request(uri, request)
-      parsed_body = parse_response(response)
-      handle_response(response, parsed_body)
+      handle_response(response, parse_response(response))
     rescue JSON::ParserError => e
       raise ParseError, "Unable to parse Z.ai response as JSON: #{e.message}"
     rescue Net::OpenTimeout, Net::ReadTimeout, SocketError, SystemCallError => e
       raise RequestError, "Unable to complete Z.ai request: #{e.message}"
+    end
+
+    def build_request(path, body)
+      uri = URI("#{base_url}#{path}")
+
+      Net::HTTP::Post.new(uri, headers).tap do |request|
+        request.body = JSON.generate(body)
+      end
     end
 
     def perform_request(uri, request)
@@ -89,7 +94,7 @@ module ZAI
     end
 
     def api_error_class(status)
-      return AuthenticationError if status == 401 || status == 403
+      return AuthenticationError if [401, 403].include?(status)
       return RateLimitError if status == 429
       return ServerError if status >= 500
 
@@ -97,12 +102,17 @@ module ZAI
     end
 
     def error_message(body, status)
-      message = body.dig("error", "message") if body.is_a?(Hash)
-      message ||= body["message"] || body["msg"] if body.is_a?(Hash)
+      message = api_error_message(body)
 
       return "Z.ai API request failed with status #{status}" if message.to_s.empty?
 
       "Z.ai API request failed with status #{status}: #{message}"
+    end
+
+    def api_error_message(body)
+      return unless body.is_a?(Hash)
+
+      body.dig("error", "message") || body["message"] || body["msg"]
     end
   end
 end
