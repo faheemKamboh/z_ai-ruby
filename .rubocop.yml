@@ -12,8 +12,10 @@ Metrics/MethodLength:
   Max: 15
 
 Naming/ClassAndModuleCamelCase:
-  AllowedNames:
-    - ZAI
+  Exclude:
+    - "lib/**/*.rb"
+    - "spec/**/*.rb"
+    - "z_ai.gemspec"
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
