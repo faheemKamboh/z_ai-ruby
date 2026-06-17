@@ -1,9 +1,19 @@
 AllCops:
   TargetRubyVersion: 3.2
 
+Metrics/AbcSize:
+  Max: 20
+
 Metrics/BlockLength:
   Exclude:
     - "spec/**/*"
+
+Metrics/MethodLength:
+  Max: 15
+
+Naming/ClassAndModuleCamelCase:
+  AllowedNames:
+    - ZAI
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
