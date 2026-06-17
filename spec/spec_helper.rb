@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require "webmock/rspec"
 require "z_ai"
+
+WebMock.disable_net_connect!
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
