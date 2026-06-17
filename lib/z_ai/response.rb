@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+# Namespace for the Z.ai Ruby SDK.
 module ZAI
+  # Lightweight wrapper around a parsed API response.
   class Response
     attr_reader :body, :status, :headers
 
