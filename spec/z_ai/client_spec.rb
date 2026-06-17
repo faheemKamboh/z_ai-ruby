@@ -5,15 +5,32 @@ require "json"
 RSpec.describe ZAI::Client do
   let(:api_key) { "test-api-key" }
   let(:client) { described_class.new(api_key: api_key) }
-  let(:endpoint) { "https://api.z.ai/api/paas/v4/chat/completions" }
+  let(:http) { instance_double(Net::HTTP) }
   let(:messages) { [{ role: "user", content: "Hello" }] }
+
+  before do
+    allow(http).to receive(:open_timeout=)
+    allow(http).to receive(:read_timeout=)
+    allow(Net::HTTP).to receive(:start).and_yield(http)
+  end
 
   describe "#chat" do
     it "creates a chat completion" do
-      stub_request(:post, endpoint)
-        .to_return(
+      expect(http).to receive(:request) do |request|
+        payload = JSON.parse(request.body)
+
+        expect(request["Authorization"]).to eq("Bearer #{api_key}")
+        expect(request["Content-Type"]).to eq("application/json")
+        expect(request.path).to eq("/api/paas/v4/chat/completions")
+        expect(payload).to include(
+          "model" => "glm-4.7-flash",
+          "messages" => [{ "role" => "user", "content" => "Hello" }],
+          "temperature" => 0.7
+        )
+
+        http_response(
           status: 200,
-          body: JSON.generate(
+          body: {
             "id" => "chatcmpl-test",
             "model" => "glm-4.7-flash",
             "choices" => [
@@ -31,9 +48,9 @@ RSpec.describe ZAI::Client do
               "completion_tokens" => 5,
               "total_tokens" => 9
             }
-          ),
-          headers: { "Content-Type" => "application/json" }
+          }
         )
+      end
 
       response = client.chat(model: "glm-4.7-flash", messages: messages, temperature: 0.7)
 
@@ -42,17 +59,6 @@ RSpec.describe ZAI::Client do
       expect(response.model).to eq("glm-4.7-flash")
       expect(response.content).to eq("Hello from Z.ai")
       expect(response.usage).to include("total_tokens" => 9)
-
-      expect(
-        a_request(:post, endpoint).with do |request|
-          payload = JSON.parse(request.body)
-
-          request.headers["Authorization"] == "Bearer #{api_key}" &&
-            payload["model"] == "glm-4.7-flash" &&
-            payload["messages"] == [{ "role" => "user", "content" => "Hello" }] &&
-            payload["temperature"] == 0.7
-        end
-      ).to have_been_made.once
     end
 
     it "raises a configuration error when no API key is provided" do
@@ -61,27 +67,30 @@ RSpec.describe ZAI::Client do
     end
 
     it "raises an authentication error for authentication failures" do
-      stub_request(:post, endpoint)
-        .to_return(
-          status: 401,
-          body: JSON.generate("error" => { "message" => "Invalid API key" }),
-          headers: { "Content-Type" => "application/json" }
-        )
+      allow(http).to receive(:request).and_return(
+        http_response(status: 401, body: { "error" => { "message" => "Invalid API key" } })
+      )
 
       expect { client.chat(model: "glm-4.7-flash", messages: messages) }
         .to raise_error(ZAI::AuthenticationError, /Invalid API key/)
     end
 
     it "raises a rate limit error for rate limit responses" do
-      stub_request(:post, endpoint)
-        .to_return(
-          status: 429,
-          body: JSON.generate("message" => "Too many requests"),
-          headers: { "Content-Type" => "application/json" }
-        )
+      allow(http).to receive(:request).and_return(
+        http_response(status: 429, body: { "message" => "Too many requests" })
+      )
 
       expect { client.chat(model: "glm-4.7-flash", messages: messages) }
         .to raise_error(ZAI::RateLimitError, /Too many requests/)
     end
+  end
+
+  def http_response(status:, body:)
+    instance_double(
+      Net::HTTPResponse,
+      code: status.to_s,
+      body: JSON.generate(body),
+      to_hash: { "content-type" => ["application/json"] }
+    )
   end
 end
