@@ -15,9 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     name: Ruby ${{ matrix.ruby }}
     strategy:
+      fail-fast: false
       matrix:
         ruby:
-          - '4.0.5'
+          - "3.2"
+          - "3.3"
+          - "3.4"
+          - "4.0.5"
 
     steps:
       - uses: actions/checkout@v6
