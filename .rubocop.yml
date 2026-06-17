@@ -1,6 +1,28 @@
 AllCops:
   TargetRubyVersion: 3.2
 
+Layout/LineLength:
+  Max: 120
+
+Metrics/AbcSize:
+  Max: 30
+
+Metrics/BlockLength:
+  Exclude:
+    - "spec/**/*"
+
+Metrics/ClassLength:
+  Max: 150
+
+Metrics/MethodLength:
+  Max: 25
+
+Naming/ClassAndModuleCamelCase:
+  Exclude:
+    - "lib/**/*.rb"
+    - "spec/**/*.rb"
+    - "z_ai.gemspec"
+
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
